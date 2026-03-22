@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
 
 const questions = [
@@ -23,17 +24,25 @@ const QuizPage = () => {
   const handleSelect = (idx: number) => {
     if (selected !== null) return;
     setSelected(idx);
+    const newScore = idx === questions[current].answer ? score + 1 : score;
     if (idx === questions[current].answer) setScore((s) => s + 1);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (current < questions.length - 1) {
         setCurrent((c) => c + 1);
         setSelected(null);
       } else {
         setFinished(true);
-        const scores = JSON.parse(localStorage.getItem("ecotrack_quiz_scores") || "[]");
-        scores.push({ score: score + (idx === questions[current].answer ? 1 : 0), total: questions.length, date: new Date().toISOString() });
-        localStorage.setItem("ecotrack_quiz_scores", JSON.stringify(scores));
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from("quiz_scores").insert({
+              user_id: user.id,
+              score: newScore,
+              total: questions.length,
+            });
+          }
+        } catch (err) { console.error(err); }
       }
     }, 1000);
   };
@@ -69,12 +78,7 @@ const QuizPage = () => {
                     else if (idx === selected) style = "bg-destructive/20 text-destructive";
                   }
                   return (
-                    <motion.button
-                      key={idx}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handleSelect(idx)}
-                      className={`w-full p-4 rounded-xl text-left font-medium transition-all ${style}`}
-                    >
+                    <motion.button key={idx} whileTap={{ scale: 0.97 }} onClick={() => handleSelect(idx)} className={`w-full p-4 rounded-xl text-left font-medium transition-all ${style}`}>
                       {opt}
                     </motion.button>
                   );
