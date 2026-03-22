@@ -111,6 +111,9 @@ const LoginPage = () => {
               {isLogin ? "Register" : "Sign In"}
             </button>
           </p>
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            <button onClick={() => navigate("/admin")} className="text-muted-foreground/60 hover:text-primary">Admin Portal →</button>
+          </p>
         </div>
       </motion.div>
     </div>
