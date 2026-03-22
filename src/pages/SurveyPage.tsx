@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Camera, ImageIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
 
 const surveyQuestions = [
@@ -14,15 +15,51 @@ const surveyQuestions = [
 
 const SurveyPage = () => {
   const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleImageSelect = (file: File) => {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async () => {
     if (Object.keys(answers).length < surveyQuestions.length) return;
-    const surveys = JSON.parse(localStorage.getItem("ecotrack_surveys") || "[]");
-    surveys.push({ answers, date: new Date().toISOString() });
-    localStorage.setItem("ecotrack_surveys", JSON.stringify(surveys));
-    setSubmitted(true);
+    setSubmitting(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      let imageUrl = null;
+      if (imageFile) {
+        const ext = imageFile.name.split(".").pop();
+        const path = `surveys/${user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("uploads").upload(path, imageFile);
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(path);
+          imageUrl = urlData.publicUrl;
+        }
+      }
+
+      const { error } = await supabase.from("surveys").insert({
+        user_id: user.id,
+        answers: answers as any,
+        image_url: imageUrl,
+      });
+      if (error) throw error;
+      setSubmitted(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -58,11 +95,7 @@ const SurveyPage = () => {
             <h3 className="font-semibold text-foreground mb-3">{sq.q}</h3>
             <div className="space-y-2">
               {sq.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setAnswers({ ...answers, [qi]: opt })}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${answers[qi] === opt ? "eco-gradient text-primary-foreground" : "bg-muted text-foreground"}`}
-                >
+                <button key={opt} onClick={() => setAnswers({ ...answers, [qi]: opt })} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${answers[qi] === opt ? "eco-gradient text-primary-foreground" : "bg-muted text-foreground"}`}>
                   {opt}
                 </button>
               ))}
@@ -70,8 +103,24 @@ const SurveyPage = () => {
           </motion.div>
         ))}
 
-        <Button variant="eco" className="w-full h-12 rounded-xl" onClick={handleSubmit} disabled={Object.keys(answers).length < surveyQuestions.length}>
-          Submit Survey
+        {/* Image Upload */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5">
+          <h3 className="font-semibold text-foreground mb-3">📷 Attach a photo (optional)</h3>
+          {imagePreview ? (
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="w-full max-h-40 object-cover rounded-xl" />
+              <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute top-2 right-2 bg-foreground/50 text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs">✕</button>
+            </div>
+          ) : (
+            <Button variant="outline" className="w-full h-12 rounded-xl gap-2" onClick={() => fileRef.current?.click()}>
+              <Camera className="w-4 h-4" /> Upload Photo
+            </Button>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageSelect(e.target.files[0])} />
+        </motion.div>
+
+        <Button variant="eco" className="w-full h-12 rounded-xl" onClick={handleSubmit} disabled={Object.keys(answers).length < surveyQuestions.length || submitting}>
+          {submitting ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : "Submit Survey"}
         </Button>
       </div>
       <BottomNav />

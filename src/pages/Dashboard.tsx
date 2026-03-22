@@ -2,10 +2,11 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
-import { Recycle, MessageSquareWarning, Lightbulb, Brain, ClipboardList, BarChart3, Bell } from "lucide-react";
+import { Recycle, MessageSquareWarning, Lightbulb, Brain, ClipboardList, BarChart3, Bell, ScanSearch } from "lucide-react";
 
 const cards = [
   { icon: Recycle, label: "Waste Segregation", path: "/waste-segregation", gradient: "from-primary to-secondary" },
+  { icon: ScanSearch, label: "AI Classifier", path: "/classifier", gradient: "from-primary to-eco-green" },
   { icon: MessageSquareWarning, label: "Complaint Box", path: "/complaints", gradient: "from-primary to-accent" },
   { icon: Lightbulb, label: "Tips & Awareness", path: "/tips", gradient: "from-secondary to-eco-green" },
   { icon: Brain, label: "Quiz", path: "/quiz", gradient: "from-primary to-primary/70" },
@@ -20,7 +21,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24 safe-top">
-      {/* Header */}
       <div className="eco-gradient px-6 pt-8 pb-12 rounded-b-[2rem]">
         <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <p className="text-primary-foreground/70 text-sm">Welcome back</p>
@@ -30,7 +30,6 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
-      {/* Cards Grid */}
       <div className="px-4 -mt-6">
         <div className="grid grid-cols-2 gap-4">
           {cards.map((card, i) => (
