@@ -15,6 +15,9 @@ import SurveyPage from "./pages/SurveyPage";
 import ReportsPage from "./pages/ReportsPage";
 import AlertsPage from "./pages/AlertsPage";
 import ProfilePage from "./pages/ProfilePage";
+import WasteClassifier from "./pages/WasteClassifier";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<SplashScreen />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/waste-segregation" element={<ProtectedRoute><WasteSegregation /></ProtectedRoute>} />
             <Route path="/complaints" element={<ProtectedRoute><ComplaintBox /></ProtectedRoute>} />
@@ -45,6 +50,7 @@ const App = () => (
             <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/classifier" element={<ProtectedRoute><WasteClassifier /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

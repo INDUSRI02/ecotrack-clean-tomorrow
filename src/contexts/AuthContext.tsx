@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User as SupaUser } from "@supabase/supabase-js";
 
 interface User {
   id: string;
@@ -22,42 +24,54 @@ export const useAuth = () => {
   return ctx;
 };
 
+const mapUser = async (su: SupaUser): Promise<User> => {
+  const { data } = await supabase.from("profiles").select("name").eq("user_id", su.id).single();
+  return { id: su.id, name: data?.name || su.user_metadata?.name || "", email: su.email || "" };
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("ecotrack_user");
-    if (stored) setUser(JSON.parse(stored));
-    setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const u = await mapUser(session.user);
+        setUser(u);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const u = await mapUser(session.user);
+        setUser(u);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate auth - replace with real backend
-    await new Promise((r) => setTimeout(r, 800));
-    const users = JSON.parse(localStorage.getItem("ecotrack_users") || "[]");
-    const found = users.find((u: any) => u.email === email && u.password === password);
-    if (!found) throw new Error("Invalid credentials");
-    const u = { id: found.id, name: found.name, email: found.email };
-    setUser(u);
-    localStorage.setItem("ecotrack_user", JSON.stringify(u));
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   };
 
   const register = async (name: string, email: string, password: string) => {
-    await new Promise((r) => setTimeout(r, 800));
-    const users = JSON.parse(localStorage.getItem("ecotrack_users") || "[]");
-    if (users.find((u: any) => u.email === email)) throw new Error("Email already exists");
-    const newUser = { id: crypto.randomUUID(), name, email, password };
-    users.push(newUser);
-    localStorage.setItem("ecotrack_users", JSON.stringify(users));
-    const u = { id: newUser.id, name, email };
-    setUser(u);
-    localStorage.setItem("ecotrack_user", JSON.stringify(u));
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    if (error) throw error;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("ecotrack_user");
   };
 
   return (
